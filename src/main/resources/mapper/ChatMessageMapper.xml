@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.demo.ai.mapper.ChatMessageMapper">
+
+    <resultMap id="BaseResultMap" type="com.demo.ai.model.ChatMessage">
+        <id column="id" property="id"/>
+        <result column="session_id" property="sessionId"/>
+        <result column="role" property="role"/>
+        <result column="content" property="content"/>
+        <result column="timestamp" property="timestamp"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, session_id, role, content, timestamp
+    </sql>
+
+    <insert id="insert" parameterType="com.demo.ai.model.ChatMessage">
+        INSERT INTO chat_message (id, session_id, role, content, timestamp)
+        VALUES (#{id}, #{sessionId}, #{role}, #{content}, #{timestamp})
+    </insert>
+
+    <insert id="batchInsert" parameterType="list">
+        INSERT INTO chat_message (id, session_id, role, content, timestamp)
+        VALUES
+        <foreach collection="messages" item="msg" separator=",">
+            (#{msg.id}, #{msg.sessionId}, #{msg.role}, #{msg.content}, #{msg.timestamp})
+        </foreach>
+    </insert>
+
+    <select id="selectBySessionId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM chat_message
+        WHERE session_id = #{sessionId}
+        ORDER BY timestamp ASC
+    </select>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM chat_message
+        WHERE id = #{id}
+    </select>
+
+    <delete id="deleteBySessionId">
+        DELETE FROM chat_message WHERE session_id = #{sessionId}
+    </delete>
+
+</mapper>

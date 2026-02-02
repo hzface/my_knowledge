@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.demo.ai.mapper.ChatSessionMapper">
+
+    <resultMap id="BaseResultMap" type="com.demo.ai.model.ChatSession">
+        <id column="id" property="id"/>
+        <result column="title" property="title"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, title, created_at, updated_at
+    </sql>
+
+    <insert id="insert" parameterType="com.demo.ai.model.ChatSession">
+        INSERT INTO chat_session (id, title, created_at, updated_at)
+        VALUES (#{id}, #{title}, #{createdAt}, #{updatedAt})
+    </insert>
+
+    <update id="update" parameterType="com.demo.ai.model.ChatSession">
+        UPDATE chat_session
+        SET title = #{title},
+            updated_at = #{updatedAt}
+        WHERE id = #{id}
+    </update>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM chat_session
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM chat_session
+        ORDER BY updated_at DESC
+    </select>
+
+    <delete id="deleteById">
+        DELETE FROM chat_session WHERE id = #{id}
+    </delete>
+
+</mapper>

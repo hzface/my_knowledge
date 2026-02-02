@@ -1,0 +1,144 @@
+server:
+  port: 8089
+
+spring:
+  application:
+    name: ai-knowledge-base
+
+  # HTTP 编码配置
+  http:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+  # MySQL 数据库配置
+  datasource:
+    url: jdbc:mysql://localhost:3306/volunteer?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
+    username: root
+    password: root1234
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  # Redis 配置
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password:
+      database: 0
+      timeout: 10000ms
+
+  # 文件上传配置
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+# MyBatis 配置
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.demo.ai.model
+  configuration:
+    map-underscore-to-camel-case: true
+
+# LangChain4j OpenAI 配置
+langchain4j:
+  openai:
+    chat-model:
+      api-key: ${ZHIPU_APIKEY}
+      base-url: https://open.bigmodel.cn/api/paas/v4
+      model-name: glm-4.6
+    embedding-model:
+      api-key: ${QWEN_API_KEY}
+      base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+      model-name: text-embedding-v3
+
+# Ollama 本地模型配置
+ollama:
+  base-url: http://localhost:11434
+  model-name: qwen3:4b
+
+# 应用自定义配置
+app:
+  # Milvus 向量数据库配置
+  milvus:
+    host: localhost
+    port: 19530
+    collection-name: knowledge_base
+    dimension: 1024
+  # LLM 提供者: openai 或 ollama
+  llm:
+    provider: openai
+    # 是否记录请求和响应日志（用于调试）
+    log-requests: true
+    log-responses: true
+
+  # 向量化（Embedding）提供者: openai 或 ollama
+  embedding:
+    provider: ollama
+    # 是否记录请求和响应日志（用于调试）
+    log-requests: true
+    log-responses: true
+    # Ollama 嵌入模型配置
+    ollama:
+      model-name: bge-m3
+
+  # 文件上传配置
+  upload:
+    path: ./uploads
+    max-size: 50MB
+
+  # RAG 配置
+  rag:
+    chunk-size: 500
+    chunk-overlap: 50
+
+  # 会话配置
+  session:
+    timeout: 3600
+    max-history: 10
+
+  # 文件系统工具配置（本地 @Tool 兜底）
+  filesystem:
+    base-path: D:\workSpace\claudeProject\filesystem-mcp-demo
+
+  # MCP 服务配置（通过 MCP 协议调用外部工具服务）
+  # 每个服务可独立配置 runner: uvx (Python) 或 npx (Node.js)
+  # uvx: pip install uv 或 https://docs.astral.sh/uv/
+  # npx: https://nodejs.org/
+  mcp:
+    # MCP 客户端超时时间（秒），首次下载包可能需要较长时间
+    timeout: 120
+
+    # GitHub MCP Server (仅 npx 支持)
+    # 包名: @modelcontextprotocol/server-github
+    github:
+      enabled: true
+      runner: npx
+      token: ${GITHUB_PERSONAL_ACCESS_TOKEN:}
+
+    # Fetch MCP Server (仅 uvx 支持) - 网页内容抓取
+    # 包名: mcp-server-fetch
+    fetch:
+      enabled: true
+      runner: uvx
+
+    # Git MCP Server (仅 uvx 支持) - 提供 git clone/diff/log/status 等
+    # 包名: mcp-server-git
+    git:
+      enabled: false
+      runner: uvx
+
+    # Filesystem MCP Server (仅 npx 支持)
+    # 包名: @modelcontextprotocol/server-filesystem
+    filesystem:
+      enabled: false
+      runner: npx
+      allowed-dir: D:\workSpace\claudeProject\filesystem-mcp-demo
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    com.demo.ai: DEBUG
+    dev.langchain4j: DEBUG
