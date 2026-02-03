@@ -215,7 +215,7 @@
             background-color: #fb7185;
             color: white;
             margin-left: auto;
-            margin-right: 60px;
+            margin-right: 24px;
             border-radius: 18px 18px 4px 18px;
             text-align: right;
         }
@@ -254,17 +254,26 @@
         .message-content h4,
         .message-content h5,
         .message-content h6 {
-            margin-top: 4px;
-            margin-bottom: 2px;
-            font-weight: 600;
+            margin-top: 12px;
+            margin-bottom: 6px;
+            font-weight: normal;
+            color: #1a1a1a;
         }
 
-        .message-content h1 { font-size: 1.5em; }
-        .message-content h2 { font-size: 1.3em; }
+        .message-content h1:first-child,
+        .message-content h2:first-child,
+        .message-content h3:first-child {
+            margin-top: 0;
+        }
+
+        .message-content h1 { font-size: 1.4em; }
+        .message-content h2 { font-size: 1.2em; }
         .message-content h3 { font-size: 1.1em; }
+        .message-content h4 { font-size: 1.05em; }
 
         .message-content p {
-            margin-bottom: 2px;
+            margin-bottom: 8px;
+            line-height: 1.6;
         }
 
         .message-content p:last-child {
@@ -273,68 +282,70 @@
 
         .message-content ul,
         .message-content ol {
-            margin: 0;
-            padding-left: 20px;
+            margin: 6px 0;
+            padding-left: 24px;
         }
 
         .message-content li {
-            margin: 0;
+            margin: 4px 0;
             padding: 0;
-            line-height: 1.0;
+            line-height: 1.5;
         }
 
         .message-content code {
-            background-color: #f5f5f5;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: 'Consolas', 'Monaco', monospace;
-            font-size: 0.9em;
-            color: #333333;
+            background-color: rgba(0, 0, 0, 0.06);
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.88em;
+            color: #c7254e;
         }
 
         .message-content pre {
-            background-color: #f5f5f5;
-            padding: 16px;
-            border-radius: 8px;
+            background-color: #f6f8fa;
+            padding: 12px 16px;
+            border-radius: 6px;
             overflow-x: auto;
-            margin: 12px 0;
-            border: 1px solid #e0e0e0;
+            margin: 10px 0;
+            border: 1px solid #e1e4e8;
         }
 
         .message-content pre code {
             background-color: transparent;
             padding: 0;
             font-size: 0.85em;
-            line-height: 1.0;
+            line-height: 1.5;
             color: #333333;
         }
 
         .message-content blockquote {
-            border-left: 4px solid #fb7185;
-            padding-left: 16px;
-            margin: 12px 0;
+            border-left: 3px solid #ddd;
+            padding-left: 12px;
+            margin: 10px 0;
             color: #666666;
         }
 
         .message-content table {
             border-collapse: collapse;
             width: 100%;
-            margin: 12px 0;
+            margin: 10px 0;
+            font-size: 0.95em;
         }
 
         .message-content th,
         .message-content td {
             border: 1px solid #e0e0e0;
-            padding: 8px 12px;
+            padding: 6px 10px;
             text-align: left;
         }
 
         .message-content th {
             background-color: #f5f5f5;
+            font-weight: 500;
         }
 
         .message-content a {
-            color: #fb7185;
+            color: #0969da;
             text-decoration: none;
         }
 
@@ -343,23 +354,18 @@
         }
 
         .message-content strong {
-            font-weight: 600;
+            font-weight: normal;
+            color: #333;
         }
 
         .message-content em {
             font-style: italic;
         }
 
-        .message-content br {
-            display: block;
-            content: "";
-            margin: 4px 0;
-        }
-
         .message-content hr {
             border: none;
             border-top: 1px solid #e0e0e0;
-            margin: 16px 0;
+            margin: 12px 0;
         }
 
         .chat-input-container {
@@ -568,7 +574,6 @@
                 // Markdown 渲染函数
                 const renderMarkdown = (content, isStreaming = false) => {
                     if (!content) return '';
-                    console.log('renderMarkdown 调用, isStreaming:', isStreaming, ', 内容前20字:', content.substring(0, 20));
                     // 流式传输中不渲染 Markdown，避免不完整的标记显示
                     if (isStreaming) {
                         // 简单转义 HTML，保留换行
@@ -579,9 +584,7 @@
                             .replace(/\n/g, '<br>');
                     }
                     try {
-                        const result = marked.parse(content);
-                        console.log('marked.parse 结果前50字:', result.substring(0, 50));
-                        return result;
+                        return marked.parse(content);
                     } catch (e) {
                         console.error('Markdown 解析错误:', e);
                         return content;
@@ -804,23 +807,15 @@
                                     sessionId.value = eventData.trim();
                                 } else if (eventType === 'done') {
                                     // 流结束，直接用 DOM 操作渲染 Markdown
-                                    console.log('收到 done 事件，内容长度:', reactiveMsg.content.length);
-                                    console.log('完整内容:', reactiveMsg.content);
                                     reactiveMsg.streaming = false;
-                                    // 直接操作 DOM 渲染 Markdown
                                     const msgId = reactiveMsg.id;
                                     const content = reactiveMsg.content;
                                     nextTick(() => {
-                                        console.log('nextTick 执行，查找元素:', msgId);
                                         const msgElement = document.querySelector(`[data-message-id="${msgId}"] .message-content`);
-                                        console.log('找到元素:', msgElement);
                                         if (msgElement) {
-                                            const parsed = marked.parse(content);
-                                            console.log('marked.parse 结果:', parsed.substring(0, 100));
-                                            msgElement.innerHTML = parsed;
+                                            msgElement.innerHTML = marked.parse(content);
                                             msgElement.classList.remove('streaming-text');
                                             highlightCode();
-                                            console.log('DOM 更新完成');
                                         }
                                     });
                                     await loadSessions();
@@ -857,7 +852,6 @@
 
                         // 确保流式结束后渲染 Markdown（直接 DOM 操作）
                         if (reactiveMsg.streaming) {
-                            console.log('reader done，直接渲染 Markdown，内容长度:', reactiveMsg.content.length);
                             reactiveMsg.streaming = false;
                             nextTick(() => {
                                 const msgElement = document.querySelector(`[data-message-id="${reactiveMsg.id}"] .message-content`);
