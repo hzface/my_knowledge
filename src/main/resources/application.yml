@@ -68,7 +68,7 @@ app:
     dimension: 1024
   # LLM 提供者: openai 或 ollama
   llm:
-    provider: openai
+    provider: ollama
     # 是否记录请求和响应日志（用于调试）
     log-requests: true
     log-responses: true
@@ -82,16 +82,19 @@ app:
     # Ollama 嵌入模型配置
     ollama:
       model-name: bge-m3
+      timeout: 3000  # 超时时间（秒），大文档需要更长时间
 
   # 文件上传配置
   upload:
-    path: ./uploads
+    path: D:\workSpace\claudeProject\filesystem-mcp-demo\uploads
     max-size: 50MB
 
   # RAG 配置
   rag:
     chunk-size: 500
     chunk-overlap: 50
+    batch-size: 10  # 每批向量化的分块数量
+    parallel-threads: 4  # 并行处理的线程数，加快向量化速度
 
   # 会话配置
   session:

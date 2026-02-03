@@ -4,7 +4,7 @@ import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.parser.apache.pdfbox.ApachePdfBoxDocumentParser;
 import dev.langchain4j.data.document.parser.apache.poi.ApachePoiDocumentParser;
-import dev.langchain4j.data.document.DocumentSplitter;
+import dev.langchain4j.data.document.parser.apache.tika.ApacheTikaDocumentParser;
 import dev.langchain4j.data.document.splitter.DocumentSplitters;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
@@ -21,7 +21,13 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * 文档服务
@@ -87,6 +93,7 @@ public class DocumentService {
         Path filePath = uploadDir.resolve(fileName);
         file.transferTo(filePath);
 
+        log.info("文档保存路径: {}", filePath.toAbsolutePath());
         return fileName;
     }
 
@@ -94,9 +101,34 @@ public class DocumentService {
      * 解析文档
      */
     private Document parseDocument(Path filePath, String originalFilename) throws IOException {
+        String lowerFilename = originalFilename != null ? originalFilename.toLowerCase() : "";
+
+        // 旧版 .doc 文件使用 Tika 解析器，更好地支持表格
+        if (lowerFilename.endsWith(".doc") && !lowerFilename.endsWith(".docx")) {
+            return parseWithTika(filePath);
+        }
+
         DocumentParser parser = getParser(originalFilename);
         try (InputStream inputStream = Files.newInputStream(filePath)) {
             return parser.parse(inputStream);
+        } catch (Exception e) {
+            throw new IOException("文档解析失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 使用 Apache Tika 解析文档
+     * Tika 对旧版 .doc 文件有更好的兼容性，支持表格提取
+     */
+    private Document parseWithTika(Path filePath) throws IOException {
+        try (InputStream inputStream = Files.newInputStream(filePath)) {
+            ApacheTikaDocumentParser tikaParser = new ApacheTikaDocumentParser();
+            Document doc = tikaParser.parse(inputStream);
+            log.info("使用 Tika 解析 .doc 文件成功");
+            return doc;
+        } catch (Exception e) {
+            log.error("Tika 解析 .doc 文件失败: {}", e.getMessage());
+            throw new IOException("Word 文档 (.doc) 解析失败: " + e.getMessage(), e);
         }
     }
 
@@ -120,29 +152,86 @@ public class DocumentService {
         }
     }
 
+    @Value("${app.rag.batch-size:10}")
+    private int batchSize;
+
+    @Value("${app.rag.parallel-threads:4}")
+    private int parallelThreads;
+
     /**
-     * 文档向量化并存储
+     * 文档向量化并存储（多线程并行批量处理，加快速度）
      */
     private void ingestDocument(Document document) {
-        log.info("开始向量化，chunk-size: {}, chunk-overlap: {}", chunkSize, chunkOverlap);
+        log.info("开始向量化，chunk-size: {}, chunk-overlap: {}, batch-size: {}, parallel-threads: {}",
+                chunkSize, chunkOverlap, batchSize, parallelThreads);
 
-        // 先手动分块看看有多少段
+        // 分块
         var splitter = DocumentSplitters.recursive(chunkSize, chunkOverlap);
         var segments = splitter.split(document);
         log.info("文档分块完成，共 {} 个分块", segments.size());
+
         for (int i = 0; i < Math.min(3, segments.size()); i++) {
             log.info("分块 {} 内容前100字: {}", i + 1,
                 segments.get(i).text().substring(0, Math.min(100, segments.get(i).text().length())));
         }
 
-        EmbeddingStoreIngestor ingestor = EmbeddingStoreIngestor.builder()
-                .documentSplitter(DocumentSplitters.recursive(chunkSize, chunkOverlap))
-                .embeddingModel(embeddingModel)
-                .embeddingStore(embeddingStore)
-                .build();
+        // 将分块分成多个批次
+        List<List<TextSegment>> batches = new ArrayList<>();
+        for (int i = 0; i < segments.size(); i += batchSize) {
+            batches.add(new ArrayList<>(segments.subList(i, Math.min(i + batchSize, segments.size()))));
+        }
 
-        ingestor.ingest(document);
-        log.info("向量化存储完成，已写入 Milvus");
+        int totalBatches = batches.size();
+        log.info("将分 {} 批次进行并行向量化，使用 {} 个线程", totalBatches, parallelThreads);
+
+        // 使用线程池并行处理
+        ExecutorService executor = Executors.newFixedThreadPool(parallelThreads);
+        AtomicInteger completedCount = new AtomicInteger(0);
+        AtomicInteger failedCount = new AtomicInteger(0);
+
+        try {
+            List<CompletableFuture<Void>> futures = new ArrayList<>();
+
+            for (int i = 0; i < batches.size(); i++) {
+                final int batchIndex = i;
+                final List<TextSegment> batchSegments = batches.get(i);
+
+                CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+                    try {
+                        log.debug("开始处理第 {}/{} 批，共 {} 个分块", batchIndex + 1, totalBatches, batchSegments.size());
+
+                        // 批量生成向量
+                        var embeddings = embeddingModel.embedAll(batchSegments).content();
+
+                        // 存储到向量数据库
+                        embeddingStore.addAll(embeddings, batchSegments);
+
+                        int completed = completedCount.incrementAndGet();
+                        log.info("第 {}/{} 批向量化完成 (进度: {}/{})",
+                                batchIndex + 1, totalBatches, completed, totalBatches);
+
+                    } catch (Exception e) {
+                        failedCount.incrementAndGet();
+                        log.error("第 {} 批向量化失败: {}", batchIndex + 1, e.getMessage());
+                        throw new RuntimeException(e);
+                    }
+                }, executor);
+
+                futures.add(future);
+            }
+
+            // 等待所有批次完成
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+            if (failedCount.get() > 0) {
+                throw new RuntimeException("向量化过程中有 " + failedCount.get() + " 个批次失败");
+            }
+
+            log.info("向量化存储完成，共处理 {} 个分块（{} 个批次），已写入 Milvus", segments.size(), totalBatches);
+
+        } finally {
+            executor.shutdown();
+        }
     }
 
     /**

@@ -198,7 +198,7 @@ public class ChatService {
             EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
                     .queryEmbedding(queryEmbedding)
                     .maxResults(5)
-                    .minScore(0.1)  // 降低阈值，提高召回率
+                    .minScore(0.5)  // 降低阈值，提高召回率
                     .build();
 
             EmbeddingSearchResult<TextSegment> result = embeddingStore.search(searchRequest);

@@ -125,6 +125,13 @@
             <version>${langchain4j.version}</version>
         </dependency>
 
+        <!-- LangChain4j Tika Parser (更好的表格支持) -->
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-document-parser-apache-tika</artifactId>
+            <version>${langchain4j.version}</version>
+        </dependency>
+
         <!-- LangChain4j Milvus Vector Store -->
         <dependency>
             <groupId>dev.langchain4j</groupId>

@@ -46,6 +46,9 @@ public class EmbeddingConfig {
     @Value("${app.embedding.ollama.model-name:nomic-embed-text}")
     private String ollamaEmbeddingModel;
 
+    @Value("${app.embedding.ollama.timeout:300}")
+    private int ollamaTimeout;
+
     @Bean
     @Primary
     public EmbeddingModel embeddingModel() {
@@ -72,11 +75,11 @@ public class EmbeddingConfig {
     }
 
     private EmbeddingModel createOllamaEmbeddingModel() {
-        log.info("Creating Ollama embedding model: {} at {}", ollamaEmbeddingModel, ollamaBaseUrl);
+        log.info("Creating Ollama embedding model: {} at {}, timeout: {}s", ollamaEmbeddingModel, ollamaBaseUrl, ollamaTimeout);
         return OllamaEmbeddingModel.builder()
                 .baseUrl(ollamaBaseUrl)
                 .modelName(ollamaEmbeddingModel)
-                .timeout(Duration.ofSeconds(120))
+                .timeout(Duration.ofSeconds(ollamaTimeout))
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .build();
