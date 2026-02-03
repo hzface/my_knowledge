@@ -142,7 +142,8 @@ public class ChatService {
                     fullResponse.append(chunk);
                 })
                 .map(chunk -> ServerSentEvent.<String>builder()
-                        .data(chunk)
+                        // SSE data 字段不能包含裸换行符，需要编码
+                        .data(chunk.replace("\n", "\\n"))
                         .build())
                 .onErrorResume(e -> {
                     // 错误时发送错误信息给前端

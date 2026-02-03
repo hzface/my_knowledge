@@ -235,12 +235,16 @@
         }
 
         .message-content {
-            line-height: 1.0;
+            line-height: 1.4;
             word-wrap: break-word;
             overflow-wrap: break-word;
             word-break: break-word;
-            white-space: pre-wrap;
             font-size: 13px;
+        }
+
+        /* 流式传输中的纯文本样式 */
+        .message-content.streaming-text {
+            white-space: pre-wrap;
         }
 
         /* Markdown 样式 */
@@ -515,7 +519,8 @@
                 <div v-for="(msg, index) in messages" :key="msg.id || index"
                      :class="['message', msg.role]"
                      :data-message-id="msg.id">
-                    <div class="message-content" v-html="renderMarkdown(msg.content)"></div>
+                    <div :class="['message-content', { 'streaming-text': msg.streaming }]"
+                         v-html="renderMarkdown(msg.content, msg.streaming)"></div>
                     <span v-if="msg.streaming" class="streaming-indicator"></span>
                 </div>
 
@@ -561,10 +566,22 @@
                 const streamingMessage = ref(null);
 
                 // Markdown 渲染函数
-                const renderMarkdown = (content) => {
+                const renderMarkdown = (content, isStreaming = false) => {
                     if (!content) return '';
+                    console.log('renderMarkdown 调用, isStreaming:', isStreaming, ', 内容前20字:', content.substring(0, 20));
+                    // 流式传输中不渲染 Markdown，避免不完整的标记显示
+                    if (isStreaming) {
+                        // 简单转义 HTML，保留换行
+                        return content
+                            .replace(/&/g, '&amp;')
+                            .replace(/</g, '&lt;')
+                            .replace(/>/g, '&gt;')
+                            .replace(/\n/g, '<br>');
+                    }
                     try {
-                        return marked.parse(content);
+                        const result = marked.parse(content);
+                        console.log('marked.parse 结果前50字:', result.substring(0, 50));
+                        return result;
                     } catch (e) {
                         console.error('Markdown 解析错误:', e);
                         return content;
@@ -729,14 +746,15 @@
                 // 流式消息发送
                 const sendStreamMessage = async (message) => {
                     // 添加流式消息占位
-                    const streamMsg = {
+                    messages.value.push({
                         id: 'streaming-' + Date.now(),
                         role: 'assistant',
                         content: '',
                         streaming: true
-                    };
-                    messages.value.push(streamMsg);
-                    streamingMessage.value = streamMsg;
+                    });
+                    // 获取响应式代理引用（关键！）
+                    const reactiveMsg = messages.value[messages.value.length - 1];
+                    streamingMessage.value = reactiveMsg;
 
                     try {
                         const response = await fetch('/api/chat/stream', {
@@ -753,7 +771,6 @@
                         const reader = response.body.getReader();
                         const decoder = new TextDecoder('utf-8');
                         let buffer = '';
-                        let currentEvent = 'message'; // 默认事件类型
 
                         while (true) {
                             const { done, value } = await reader.read();
@@ -786,20 +803,33 @@
                                 if (eventType === 'session') {
                                     sessionId.value = eventData.trim();
                                 } else if (eventType === 'done') {
-                                    streamMsg.streaming = false;
+                                    // 流结束，直接用 DOM 操作渲染 Markdown
+                                    console.log('收到 done 事件，内容长度:', reactiveMsg.content.length);
+                                    console.log('完整内容:', reactiveMsg.content);
+                                    reactiveMsg.streaming = false;
+                                    // 直接操作 DOM 渲染 Markdown
+                                    const msgId = reactiveMsg.id;
+                                    const content = reactiveMsg.content;
+                                    nextTick(() => {
+                                        console.log('nextTick 执行，查找元素:', msgId);
+                                        const msgElement = document.querySelector(`[data-message-id="${msgId}"] .message-content`);
+                                        console.log('找到元素:', msgElement);
+                                        if (msgElement) {
+                                            const parsed = marked.parse(content);
+                                            console.log('marked.parse 结果:', parsed.substring(0, 100));
+                                            msgElement.innerHTML = parsed;
+                                            msgElement.classList.remove('streaming-text');
+                                            highlightCode();
+                                            console.log('DOM 更新完成');
+                                        }
+                                    });
                                     await loadSessions();
                                 } else if (eventType === 'error') {
-                                    streamMsg.content = eventData || '服务暂时不可用，请稍后重试';
-                                    streamMsg.streaming = false;
+                                    reactiveMsg.content = eventData || '服务暂时不可用，请稍后重试';
+                                    reactiveMsg.streaming = false;
                                 } else if (eventData) {
-                                    // 普通数据消息，追加内容并实时渲染Markdown
-                                    streamMsg.content += eventData;
-                                    // 实时渲染Markdown
-                                    const messageElement = document.querySelector(`[data-message-id="${streamMsg.id}"] .message-content`);
-                                    if (messageElement) {
-                                        messageElement.innerHTML = marked.parse(streamMsg.content);
-                                        highlightCode();
-                                    }
+                                    // 普通数据消息，解码换行符并追加内容
+                                    reactiveMsg.content += eventData.replace(/\\n/g, '\n');
                                     scrollToBottom();
                                 }
                             }
@@ -820,22 +850,29 @@
                             }
 
                             if (eventData && eventType !== 'done' && eventType !== 'session') {
-                                streamMsg.content += eventData;
-                                // 实时渲染Markdown
-                                const messageElement = document.querySelector(`[data-message-id="${streamMsg.id}"] .message-content`);
-                                if (messageElement) {
-                                    messageElement.innerHTML = marked.parse(streamMsg.content);
-                                    highlightCode();
-                                }
+                                // 解码换行符
+                                reactiveMsg.content += eventData.replace(/\\n/g, '\n');
                             }
                         }
 
-                        streamMsg.streaming = false;
+                        // 确保流式结束后渲染 Markdown（直接 DOM 操作）
+                        if (reactiveMsg.streaming) {
+                            console.log('reader done，直接渲染 Markdown，内容长度:', reactiveMsg.content.length);
+                            reactiveMsg.streaming = false;
+                            nextTick(() => {
+                                const msgElement = document.querySelector(`[data-message-id="${reactiveMsg.id}"] .message-content`);
+                                if (msgElement) {
+                                    msgElement.innerHTML = marked.parse(reactiveMsg.content);
+                                    msgElement.classList.remove('streaming-text');
+                                    highlightCode();
+                                }
+                            });
+                        }
 
                     } catch (error) {
                         console.error('流式消息失败:', error);
-                        streamMsg.content = '网络错误，请稍后重试';
-                        streamMsg.streaming = false;
+                        reactiveMsg.content = '网络错误，请稍后重试';
+                        reactiveMsg.streaming = false;
                     } finally {
                         loading.value = false;
                         streamingMessage.value = null;

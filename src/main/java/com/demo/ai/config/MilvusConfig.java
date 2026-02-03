@@ -29,7 +29,6 @@ public class MilvusConfig {
     private int dimension;
 
     @Bean
-    @Lazy
     public EmbeddingStore<TextSegment> embeddingStore() {
         log.info("Configuring Milvus embedding store: {}:{}, collection: {}, dimension: {}",
                 host, port, collectionName, dimension);
@@ -39,7 +38,7 @@ public class MilvusConfig {
         return MilvusEmbeddingStore.builder()
                 .uri(uri)
                 .collectionName(collectionName)
-                .dimension(dimension)
+                .dimension(dimension) // 指定存储在 Milvus 中的向量数据的维度大小
                 .build();
     }
 }
