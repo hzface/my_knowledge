@@ -121,21 +121,71 @@
             white-space: nowrap;
         }
 
-        .session-item .session-delete {
+        .session-item .session-actions {
+            display: flex;
+            gap: 4px;
             opacity: 0;
-            color: #666666;
-            padding: 4px 8px;
-            border-radius: 4px;
-            cursor: pointer;
         }
 
-        .session-item:hover .session-delete {
+        .session-item:hover .session-actions {
             opacity: 1;
+        }
+
+        .session-item .session-edit,
+        .session-item .session-delete {
+            color: #666666;
+            padding: 4px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .session-item .session-edit:hover {
+            color: #fb7185;
+            background-color: rgba(251, 113, 133, 0.1);
         }
 
         .session-item .session-delete:hover {
             color: #ff6b6b;
             background-color: rgba(255, 107, 107, 0.1);
+        }
+
+        .session-item .session-title-input {
+            flex: 1;
+            padding: 4px 8px;
+            border: 1px solid #fb7185;
+            border-radius: 4px;
+            font-size: 14px;
+            outline: none;
+            background: #fff;
+        }
+
+        .session-item .session-title-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        .session-item .session-title-actions span {
+            padding: 4px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .session-item .session-title-actions .confirm {
+            color: #22c55e;
+        }
+
+        .session-item .session-title-actions .confirm:hover {
+            background-color: rgba(34, 197, 94, 0.1);
+        }
+
+        .session-item .session-title-actions .cancel {
+            color: #666666;
+        }
+
+        .session-item .session-title-actions .cancel:hover {
+            background-color: rgba(0, 0, 0, 0.05);
         }
 
         .upload-section {
@@ -489,8 +539,25 @@
                 <div v-for="session in sessions" :key="session.id"
                      :class="['session-item', { active: session.id === sessionId }]"
                      @click="loadSession(session.id)">
-                    <span class="session-title">{{ session.title || '新对话' }}</span>
-                    <span class="session-delete" @click.stop="deleteSession(session.id)">✕</span>
+                    <template v-if="editingSessionId === session.id">
+                        <input class="session-title-input"
+                               v-model="editingTitle"
+                               @click.stop
+                               @keydown.enter="confirmEditTitle(session.id)"
+                               @keydown.escape="cancelEditTitle"
+                               ref="titleInput">
+                        <div class="session-title-actions" @click.stop>
+                            <span class="confirm" @click="confirmEditTitle(session.id)">✓</span>
+                            <span class="cancel" @click="cancelEditTitle">✕</span>
+                        </div>
+                    </template>
+                    <template v-else>
+                        <span class="session-title">{{ session.title || '新对话' }}</span>
+                        <div class="session-actions">
+                            <span class="session-edit" @click.stop="startEditTitle(session)">✎</span>
+                            <span class="session-delete" @click.stop="deleteSession(session.id)">✕</span>
+                        </div>
+                    </template>
                 </div>
             </div>
 
@@ -570,6 +637,8 @@
                 const loading = ref(false);
                 const streamMode = ref(true);
                 const streamingMessage = ref(null);
+                const editingSessionId = ref(null);
+                const editingTitle = ref('');
 
                 // Markdown 渲染函数
                 const renderMarkdown = (content, isStreaming = false) => {
@@ -663,6 +732,50 @@
                     } catch (error) {
                         console.error('删除会话失败:', error);
                     }
+                };
+
+                // 开始编辑会话标题
+                const startEditTitle = (session) => {
+                    editingSessionId.value = session.id;
+                    editingTitle.value = session.title || '';
+                    nextTick(() => {
+                        const input = document.querySelector('.session-title-input');
+                        if (input) {
+                            input.focus();
+                            input.select();
+                        }
+                    });
+                };
+
+                // 确认编辑标题
+                const confirmEditTitle = async (id) => {
+                    const newTitle = editingTitle.value.trim();
+                    if (!newTitle) {
+                        cancelEditTitle();
+                        return;
+                    }
+                    try {
+                        await fetch(`/api/chat/session/${id}/title`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(newTitle)
+                        });
+                        const session = sessions.value.find(s => s.id === id);
+                        if (session) {
+                            session.title = newTitle;
+                        }
+                    } catch (error) {
+                        console.error('更新标题失败:', error);
+                    }
+                    cancelEditTitle();
+                };
+
+                // 取消编辑标题
+                const cancelEditTitle = () => {
+                    editingSessionId.value = null;
+                    editingTitle.value = '';
                 };
 
                 // 创建新会话
@@ -926,11 +1039,16 @@
                     loading,
                     streamMode,
                     streamingMessage,
+                    editingSessionId,
+                    editingTitle,
                     currentSessionTitle,
                     newChat,
                     sendMessage,
                     loadSession,
                     deleteSession,
+                    startEditTitle,
+                    confirmEditTitle,
+                    cancelEditTitle,
                     loadSessions,
                     renderMarkdown
                 };

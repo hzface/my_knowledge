@@ -9,7 +9,7 @@
 - **多模型支持**：OpenAI API 兼容接口 + Ollama 本地模型
 - **文档处理**：PDF、Word、Excel、PowerPoint 全格式支持
 - **会话管理**：Redis + MySQL 双层存储，支持历史对话
-- **MCP 工具集成**：GitHub、网页抓取、Git 操作等扩展能力
+- **MCP 工具集成**：文件系统操作、网页抓取、Git 操作等扩展能力
 
 ## 技术栈
 
@@ -20,7 +20,7 @@
 | 向量数据库 | Milvus |
 | 关系数据库 | MySQL 8.0+ |
 | 缓存 | Redis |
-| 前端 | Vue 3、marked.js、highlight.js |
+| 前端 | Vue 3 |
 | 文档解析 | Apache PDFBox、Apache Tika、Apache POI |
 
 ## 项目结构
