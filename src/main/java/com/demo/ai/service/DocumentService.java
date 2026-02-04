@@ -101,34 +101,11 @@ public class DocumentService {
      * 解析文档
      */
     private Document parseDocument(Path filePath, String originalFilename) throws IOException {
-        String lowerFilename = originalFilename != null ? originalFilename.toLowerCase() : "";
-
-        // 旧版 .doc 文件使用 Tika 解析器，更好地支持表格
-        if (lowerFilename.endsWith(".doc") && !lowerFilename.endsWith(".docx")) {
-            return parseWithTika(filePath);
-        }
-
         DocumentParser parser = getParser(originalFilename);
         try (InputStream inputStream = Files.newInputStream(filePath)) {
             return parser.parse(inputStream);
         } catch (Exception e) {
             throw new IOException("文档解析失败: " + e.getMessage(), e);
-        }
-    }
-
-    /**
-     * 使用 Apache Tika 解析文档
-     * Tika 对旧版 .doc 文件有更好的兼容性，支持表格提取
-     */
-    private Document parseWithTika(Path filePath) throws IOException {
-        try (InputStream inputStream = Files.newInputStream(filePath)) {
-            ApacheTikaDocumentParser tikaParser = new ApacheTikaDocumentParser();
-            Document doc = tikaParser.parse(inputStream);
-            log.info("使用 Tika 解析 .doc 文件成功");
-            return doc;
-        } catch (Exception e) {
-            log.error("Tika 解析 .doc 文件失败: {}", e.getMessage());
-            throw new IOException("Word 文档 (.doc) 解析失败: " + e.getMessage(), e);
         }
     }
 
@@ -143,8 +120,10 @@ public class DocumentService {
         String lowerFilename = filename.toLowerCase();
         if (lowerFilename.endsWith(".pdf")) {
             return new ApachePdfBoxDocumentParser();
-        } else if (lowerFilename.endsWith(".docx") || lowerFilename.endsWith(".doc") ||
-                lowerFilename.endsWith(".xlsx") || lowerFilename.endsWith(".xls") ||
+        } else if (lowerFilename.endsWith(".docx") || lowerFilename.endsWith(".doc")) {
+            // 旧版 .doc 文件使用 Tika 解析器，更好地支持表格
+            return new ApacheTikaDocumentParser();
+        } else if (lowerFilename.endsWith(".xlsx") || lowerFilename.endsWith(".xls") ||
                 lowerFilename.endsWith(".pptx") || lowerFilename.endsWith(".ppt")) {
             return new ApachePoiDocumentParser();
         } else {

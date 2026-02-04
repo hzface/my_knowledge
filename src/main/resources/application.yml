@@ -56,7 +56,12 @@ langchain4j:
 # Ollama 本地模型配置
 ollama:
   base-url: http://localhost:11434
-  model-name: qwen3:4b
+  chat-model:
+    model-name: qwen3:4b
+    timeout: 3000
+  embedding-model:  # Ollama 嵌入模型配置
+    model-name: bge-m3
+    timeout: 3000  # 超时时间（秒），大文档需要更长时间
 
 # 应用自定义配置
 app:
@@ -68,7 +73,7 @@ app:
     dimension: 1024
   # LLM 提供者: openai 或 ollama
   llm:
-    provider: ollama
+    provider: openAI
     # 是否记录请求和响应日志（用于调试）
     log-requests: true
     log-responses: true
@@ -79,10 +84,7 @@ app:
     # 是否记录请求和响应日志（用于调试）
     log-requests: true
     log-responses: true
-    # Ollama 嵌入模型配置
-    ollama:
-      model-name: bge-m3
-      timeout: 3000  # 超时时间（秒），大文档需要更长时间
+
 
   # 文件上传配置
   upload:

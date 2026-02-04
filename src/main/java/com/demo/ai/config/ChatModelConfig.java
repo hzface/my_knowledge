@@ -54,8 +54,11 @@ public class ChatModelConfig {
     @Value("${ollama.base-url:http://localhost:11434}")
     private String ollamaBaseUrl;
 
-    @Value("${ollama.model-name:qwen3:4b}")
+    @Value("${ollama.chat-model.model-name:qwen3:4b}")
     private String ollamaModelName;
+
+    @Value("${ollama.chat-model.timeout:300}")
+    private int ollamaTimeout;
 
     /**
      * 自定义 OkHttpClient，确保正确处理 UTF-8 编码
@@ -199,7 +202,7 @@ public class ChatModelConfig {
         return OllamaChatModel.builder()
                 .baseUrl(ollamaBaseUrl)
                 .modelName(ollamaModelName)
-                .timeout(Duration.ofSeconds(180))
+                .timeout(Duration.ofSeconds(ollamaTimeout))
                 .logRequests(logRequests)
                 .logResponses(logResponses)
                 .listeners(List.of(listener))

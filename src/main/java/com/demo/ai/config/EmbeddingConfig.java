@@ -43,10 +43,10 @@ public class EmbeddingConfig {
     @Value("${ollama.base-url:http://localhost:11434}")
     private String ollamaBaseUrl;
 
-    @Value("${app.embedding.ollama.model-name:nomic-embed-text}")
+    @Value("${ollama.embedding-model.model-name:nomic-embed-text}")
     private String ollamaEmbeddingModel;
 
-    @Value("${app.embedding.ollama.timeout:300}")
+    @Value("${ollama.embedding-model.timeout:300}")
     private int ollamaTimeout;
 
     @Bean

@@ -11,31 +11,31 @@ import reactor.core.publisher.Flux;
  */
 public interface AiAssistant {
 
-    @SystemMessage("You are an intelligent knowledge base assistant responsible for answering user questions. " +
-            "Please answer questions accurately based on the provided context. " +
-            "If there is no relevant information in the context, please honestly inform the user. " +
-            "Answers should be concise, accurate, and helpful. Please respond in Chinese.")
+    @SystemMessage("你是一个智能知识库助手，负责回答用户问题。" +
+            "请根据提供的上下文准确回答问题。" +
+            "如果上下文中没有相关信息，请诚实地告知用户。" +
+            "回答应简洁、准确、有帮助。请用中文回答。")
     String chat(@UserMessage String userMessage);
 
-    @SystemMessage("You are an intelligent knowledge base assistant responsible for answering user questions. " +
-            "Please answer questions accurately based on the provided context. " +
-            "If there is no relevant information in the context, please honestly inform the user. " +
-            "Answers should be concise, accurate, and helpful. Please respond in Chinese.")
+    @SystemMessage("你是一个智能知识库助手，负责回答用户问题。" +
+            "请根据提供的上下文准确回答问题。" +
+            "如果上下文中没有相关信息，请诚实地告知用户。" +
+            "回答应简洁、准确、有帮助。请用中文回答。")
     Flux<String> chatStream(@UserMessage String userMessage);
 
-    @SystemMessage("You are an intelligent knowledge base assistant. " +
-            "Please answer user questions based on the following retrieved document content:\n\n" +
+    @SystemMessage("你是一个智能知识库助手。" +
+            "请根据以下检索到的文档内容回答用户问题：\n\n" +
             "{{context}}\n\n" +
-            "Please provide an accurate answer based on the above document content. " +
-            "If there is no relevant information in the documents, please honestly inform. Please respond in Chinese.")
+            "请根据以上文档内容提供准确的回答。" +
+            "如果文档中没有相关信息，请诚实告知。请用中文回答。")
     @UserMessage("{{question}}")
     String chatWithContext(@V("context") String context, @V("question") String question);
 
-    @SystemMessage("You are an intelligent knowledge base assistant. " +
-            "Please answer user questions based on the following retrieved document content:\n\n" +
+    @SystemMessage("你是一个智能知识库助手。" +
+            "请根据以下检索到的文档内容回答用户问题：\n\n" +
             "{{context}}\n\n" +
-            "Please provide an accurate answer based on the above document content. " +
-            "If there is no relevant information in the documents, please honestly inform. Please respond in Chinese.")
+            "请根据以上文档内容提供准确的回答。" +
+            "如果文档中没有相关信息，请诚实告知。请用中文回答。")
     @UserMessage("{{question}}")
     Flux<String> chatStreamWithContext(@V("context") String context, @V("question") String question);
 }
