@@ -61,12 +61,12 @@ public class ChatService {
             // RAG 检索相关文档
             String context = retrieveContext(request.getMessage());
 
-            // 调用 AI 获取回复
+            // 调用 AI 获取回复（传递 sessionId 以启用会话记忆）
             String response;
             if (context != null && !context.isEmpty()) {
-                response = aiAssistant.chatWithContext(context, request.getMessage());
+                response = aiAssistant.chatWithContext(sessionId, context, request.getMessage());
             } else {
-                response = aiAssistant.chat(request.getMessage());
+                response = aiAssistant.chat(sessionId, request.getMessage());
             }
 
             // 保存 AI 回复
@@ -131,10 +131,10 @@ public class ChatService {
         Flux<String> aiResponse;
         if (context != null && !context.isEmpty()) {
             log.info("流式聊天使用 RAG 上下文");
-            aiResponse = aiAssistant.chatStreamWithContext(context, request.getMessage());
+            aiResponse = aiAssistant.chatStreamWithContext(sessionId, context, request.getMessage());
         } else {
             log.info("流式聊天无 RAG 上下文");
-            aiResponse = aiAssistant.chatStream(request.getMessage());
+            aiResponse = aiAssistant.chatStream(sessionId, request.getMessage());
         }
 
         Flux<ServerSentEvent<String>> aiStream = aiResponse
@@ -187,48 +187,58 @@ public class ChatService {
 
     /**
      * RAG 检索相关文档上下文
+     *
+     * @param query 用户输入的查询字符串，用于生成嵌入向量并检索相关文档
+     * @return 返回检索到的相关文档内容，若未检索到则返回 null
      */
     private String retrieveContext(String query) {
         try {
             log.info("RAG 检索开始，查询: {}", query);
+
+            // 生成查询文本的嵌入向量
             Embedding queryEmbedding = embeddingModel.embed(query).content();
 
-            // 使用 LangChain4j 1.0.x API
-            // 降低 minScore 阈值以提高召回率
+            // 构建嵌入搜索请求，设置最大返回结果数和最小匹配分数阈值
             EmbeddingSearchRequest searchRequest = EmbeddingSearchRequest.builder()
                     .queryEmbedding(queryEmbedding)
                     .maxResults(5)
-                    .minScore(0.5)  // 降低阈值，提高召回率
+                    .minScore(0.5)  // 降低阈值以提高召回率
                     .build();
 
+            // 执行嵌入搜索，获取匹配结果
             EmbeddingSearchResult<TextSegment> result = embeddingStore.search(searchRequest);
 
+            // 获取匹配结果列表
             List<EmbeddingMatch<TextSegment>> matches = result.matches();
             log.info("RAG 检索结果数量: {}", matches.size());
 
+            // 若无匹配结果，记录日志并返回 null
             if (matches.isEmpty()) {
                 log.info("RAG 未检索到相关文档");
                 return null;
             }
 
-            // 打印检索到的内容和分数
+            // 打印每条匹配结果的内容和分数（仅显示前100个字符）
             for (int i = 0; i < matches.size(); i++) {
                 EmbeddingMatch<TextSegment> match = matches.get(i);
                 log.info("RAG 结果 {}: 分数={}, 内容前100字={}",
-                    i + 1,
-                    match.score(),
-                    match.embedded().text().substring(0, Math.min(100, match.embedded().text().length())));
+                        i + 1,
+                        match.score(),
+                        match.embedded().text().substring(0, Math.min(100, match.embedded().text().length())));
             }
 
+            // 将所有匹配结果的内容拼接成一个字符串并返回
             return matches.stream()
                     .map(match -> match.embedded().text())
                     .collect(Collectors.joining("\n\n---\n\n"));
 
         } catch (Exception e) {
+            // 捕获异常并记录警告日志，返回 null
             log.warn("RAG retrieval failed", e);
             return null;
         }
     }
+
 
     /**
      * 解析错误信息，处理可能的编码问题
