@@ -2,6 +2,7 @@ package com.demo.ai.service;
 
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
+import dev.langchain4j.data.document.parser.TextDocumentParser;
 import dev.langchain4j.data.document.parser.apache.pdfbox.ApachePdfBoxDocumentParser;
 import dev.langchain4j.data.document.parser.apache.poi.ApachePoiDocumentParser;
 import dev.langchain4j.data.document.parser.apache.tika.ApacheTikaDocumentParser;
@@ -126,8 +127,11 @@ public class DocumentService {
         } else if (lowerFilename.endsWith(".xlsx") || lowerFilename.endsWith(".xls") ||
                 lowerFilename.endsWith(".pptx") || lowerFilename.endsWith(".ppt")) {
             return new ApachePoiDocumentParser();
+        } else if (lowerFilename.endsWith(".txt")) {
+            return new TextDocumentParser();
         } else {
-            throw new IllegalArgumentException("Unsupported file type: " + filename);
+            return new ApacheTikaDocumentParser();
+//            throw new IllegalArgumentException("Unsupported file type: " + filename);
         }
     }
 
