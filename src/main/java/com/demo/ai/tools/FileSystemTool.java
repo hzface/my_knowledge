@@ -40,6 +40,7 @@ public class FileSystemTool {
 
     @Tool("列出指定目录的内容，返回文件和子目录列表")
     public String listDirectory(String path) {
+        log.info("列出目录: {}", path);
         try {
             Path dir = getSafePath(path);
 
@@ -67,9 +68,11 @@ public class FileSystemTool {
                 }).collect(Collectors.toList());
 
                 if (items.isEmpty()) {
+                    log.info("目录为空: {}", path);
                     return "目录为空";
                 }
 
+                log.info("成功列出目录 {} 的 {} 个项目", path, items.size());
                 return String.join("\n", items);
             }
 
@@ -81,6 +84,7 @@ public class FileSystemTool {
 
     @Tool("读取指定文件的内容")
     public String readFile(String path) {
+        log.info("读取文件: {}", path);
         try {
             Path file = getSafePath(path);
 
@@ -103,6 +107,9 @@ public class FileSystemTool {
             // 限制返回内容长度
             if (content.length() > 50000) {
                 content = content.substring(0, 50000) + "\n...(内容已截断)";
+                log.info("成功读取文件 {} (内容已截断, 原始大小: {})", path, formatSize(size));
+            } else {
+                log.info("成功读取文件 {} (大小: {})", path, formatSize(size));
             }
 
             return content;
@@ -115,6 +122,7 @@ public class FileSystemTool {
 
     @Tool("写入内容到指定文件（会覆盖已有内容）")
     public String writeFile(String path, String content) {
+        log.info("写入文件: {}, 内容长度: {} 字符", path, content.length());
         try {
             Path file = getSafePath(path);
 
@@ -134,6 +142,7 @@ public class FileSystemTool {
 
     @Tool("删除指定的文件或目录")
     public String delete(String path) {
+        log.info("删除路径: {}", path);
         try {
             Path target = getSafePath(path);
 
@@ -171,6 +180,7 @@ public class FileSystemTool {
 
     @Tool("在指定目录下搜索匹配模式的文件")
     public String searchFiles(String directory, String pattern) {
+        log.info("搜索文件: 目录={}, 模式={}", directory, pattern);
         try {
             Path dir = getSafePath(directory);
 
@@ -193,9 +203,11 @@ public class FileSystemTool {
             });
 
             if (results.isEmpty()) {
+                log.info("未找到匹配的文件: 目录={}, 模式={}", directory, pattern);
                 return "未找到匹配的文件";
             }
 
+            log.info("搜索完成: 在 {} 目录下找到 {} 个匹配 {} 的文件", directory, results.size(), pattern);
             return "找到 " + results.size() + " 个文件:\n" + String.join("\n", results);
 
         } catch (Exception e) {
@@ -206,6 +218,7 @@ public class FileSystemTool {
 
     @Tool("获取文件或目录的详细信息")
     public String getInfo(String path) {
+        log.info("获取信息: {}", path);
         try {
             Path target = getSafePath(path);
 
@@ -214,6 +227,10 @@ public class FileSystemTool {
             }
 
             BasicFileAttributes attrs = Files.readAttributes(target, BasicFileAttributes.class);
+
+            log.info("成功获取信息: {} (类型: {}, 大小: {})", path,
+                    Files.isDirectory(target) ? "目录" : "文件",
+                    formatSize(attrs.size()));
 
             // 使用 Java 17 文本块
             return """

@@ -79,14 +79,22 @@ public class RedisChatMemoryStore implements ChatMemoryStore {
         List<Map<String, Object>> result = new ArrayList<>();
         for (ChatMessage message : messages) {
             Map<String, Object> map = new java.util.HashMap<>();
-            map.put("type", message.type().name());
-            if (message instanceof UserMessage userMessage) {
-                map.put("content", userMessage.singleText());
-            } else if (message instanceof AiMessage aiMessage) {
-                map.put("content", aiMessage.text());
-            } else if (message instanceof SystemMessage systemMessage) {
-                map.put("content", systemMessage.text());
+            // 通过 instanceof 判断类型，避免 IDE 类型推断问题
+            String type;
+            if (message instanceof UserMessage) {
+                type = "USER";
+                map.put("content", ((UserMessage) message).singleText());
+            } else if (message instanceof AiMessage) {
+                type = "AI";
+                map.put("content", ((AiMessage) message).text());
+            } else if (message instanceof SystemMessage) {
+                type = "SYSTEM";
+                map.put("content", ((SystemMessage) message).text());
+            } else {
+                type = "UNKNOWN";
+                map.put("content", "");
             }
+            map.put("type", type);
             result.add(map);
         }
         return result;
